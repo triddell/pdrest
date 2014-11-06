@@ -30,8 +30,8 @@ $ go build pdrest.go
 $ mv pdrest /to/some/directory
 ```
 
-Usage
------
+##Usage
+
 __pdrest -help__
 
 ```
@@ -47,7 +47,9 @@ The command defaults to using an appliance admin user name of `admin`, a runtime
 
 The `-hostname` flag will always be needed since __pdrest__ can't run on the appliance itself.
 
-Sample __commands.txt__
+###Sample files for example commands:
+
+__commands.txt__
 
 ```
 server list
@@ -55,12 +57,14 @@ server list
   server list
 ```
 
-Sample __credentials.txt__
+__credentials.txt__
 
 ```
 appPswd
 samPswd
 ```
+
+### Examples
 
 __Example 1:__ Prompting for passwords
 
