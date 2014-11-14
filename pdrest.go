@@ -10,6 +10,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/Bowery/prompt"
 )
 
 // Struct for the json request
@@ -24,44 +26,74 @@ type response struct {
 	Result string `json:"result"`
 }
 
+var (
+	appPassword string
+	samPassword string
+	err         error
+)
+
 func main() {
 
 	// Configure flags and command line defaults
-	hostnamePtr := flag.String("hostname", "localhost", "Appliance Hostname")
+	hostname := flag.String("host", "localhost", "Appliance Hostname")
 
-	appUsernamePtr := flag.String("applianceAdmin", "admin", "Appliance Admin User Name")
+	appUsername := flag.String("applianceAdmin", "admin",
+		"Appliance Admin User Name")
 
-	samUsernamePtr := flag.String("runtimeAdmin", "sec_master", "Runtime Admin User Name")
+	samUsername := flag.String("runtimeAdmin", "sec_master",
+		"Runtime Admin User Name")
 
-	filePtr := flag.String("commands", "commands.txt", "Commands File Path")
+	commandsFile := flag.String("commands", "commands.txt", "Commands File Path")
+
+	credsFile := flag.String("creds", "", "Credentials File Path")
 
 	flag.Parse()
 
-	// Get the passwords from standard input; alternatively these can be feed
-	// in using standard input redirection like "< credentials.txt"
+	if *credsFile == "" {
 
-	// Use Scanln instead of Scanf to deal with Windows line endings:
-	// https://code.google.com/p/go/issues/detail?id=5391
+		// Since no credentials file was passed, prompt the user for passwords
+		appPassword, err = prompt.Password("Appliance Admin User Password")
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	var appPassword string
-	fmt.Println("Appliance Admin User Password:")
-	fmt.Scanln(&appPassword)
+		samPassword, err = prompt.Password("Runtime Admin User Password")
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	var samPassword string
-	fmt.Println("Runtime Admin User Password:")
-	fmt.Scanln(&samPassword)
+	} else {
+
+		// Since a credentials file was passed, parse the file for passwords
+		creds, err := readLines(*credsFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if len(creds) > 1 {
+
+			appPassword = creds[0]
+
+			samPassword = creds[1]
+
+		} else {
+			log.Fatal("Credential file needs two passwords, each on their own line.")
+		}
+
+	}
 
 	// Configure the URL based on SAM defaults
-	url := "https://" + *hostnamePtr + "/isam/pdadmin"
+	url := "https://" + *hostname + "/isam/pdadmin"
 
 	// Read in the commands from the passed filepath
-	commands, err := readCommands(*filePtr)
+	commands, err := readLines(*commandsFile)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Create a message
-	m := &message{AdminID: *samUsernamePtr, AdminPwd: samPassword, Commands: commands}
+	m := &message{AdminID: *samUsername, AdminPwd: samPassword,
+		Commands: commands}
 
 	// Encode the message struct as json
 	b, _ := json.Marshal(m)
@@ -75,9 +107,9 @@ func main() {
 	// Add headers to the requset for json and HTTP Basic Authentication
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	req.SetBasicAuth(*appUsernamePtr, appPassword)
+	req.SetBasicAuth(*appUsername, appPassword)
 
-	// Create a transport that ignores any untrusted SSL certificates on the appliance
+	// Create a transport that ignores any untrusted SSL certificates
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
@@ -109,30 +141,30 @@ func main() {
 
 }
 
-func readCommands(fname string) (commands []string, err error) {
+func readLines(filePath string) (lines []string, err error) {
 
-	b, err := ioutil.ReadFile(fname)
+	b, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	lines := strings.Split(string(b), "\n")
+	rawLines := strings.Split(string(b), "\n")
 
-	commands = make([]string, 0, len(lines))
+	lines = make([]string, 0, len(rawLines))
 
-	for _, l := range lines {
+	for _, l := range rawLines {
 
 		// Trim to remove tabs (\t), Windows carriage returns (\r), etc.
-		command := strings.TrimSpace(l)
+		line := strings.TrimSpace(l)
 
 		// Ignore empty lines or lines starting with a "#"
-		if len(command) == 0 || strings.HasPrefix(command, "#") {
+		if len(line) == 0 || strings.HasPrefix(line, "#") {
 			continue
 		}
 
-		commands = append(commands, command)
+		lines = append(lines, line)
 	}
 
-	return commands, nil
+	return lines, nil
 
 }

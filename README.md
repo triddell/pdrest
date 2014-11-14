@@ -39,13 +39,16 @@ __pdrest -help__
 Usage of pdrest:
   -applianceAdmin="admin": Appliance Admin User Name
   -commands="commands.txt": Commands File Path
-  -hostname="localhost": Appliance Hostname
+  -creds="": Credentials File Path
+  -host="localhost": Appliance Hostname
   -runtimeAdmin="sec_master": Runtime Admin User Name
 ```
 
 The command defaults to using an appliance admin user name of `admin`, a runtime admin user name of `sec_master`, and a commands file name of `commands.txt`.
 
 The `-hostname` flag will always be needed since __pdrest__ can't run on the appliance itself.
+
+Passwords can be provided in an external file by using the `-credentials` flag.
 
 ###Sample files for example commands:
 
@@ -60,7 +63,9 @@ server list
 __credentials.txt__
 
 ```
+# SAM Appliance Password
 appPswd
+# SAM Runtime Password
 samPswd
 ```
 
@@ -69,11 +74,9 @@ samPswd
 __Example 1:__ Prompting for passwords
 
 ```
-> pdrest -hostname samapp
+> pdrest -host sam01.riddell.us
 Appliance Admin User Password:
-appPswd
 Runtime Admin User Password:
-samPswd
 Status Code:  200
 Result:
 cmd> server list
@@ -84,12 +87,10 @@ cmd> server list
     web01-webseald-sam01.riddell.us
 ```
 
-__Example 2:__ Redirecting standard input for passwords
+__Example 2:__ Passwords stored in external file
 
 ```
-> pdrest -hostname samapp < credentials.txt
-Appliance Admin User Password:
-Runtime Admin User Password:
+> pdrest -host sam01.riddell.us -creds credentials.txt
 Status Code:  200
 Result:
 cmd> server list
